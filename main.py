@@ -32,7 +32,7 @@ workflow.add_edge(START, "model")
 memory = MemorySaver()
 app = workflow.compile(checkpointer=memory)
 
-resp = app.invoke(
+app.invoke(
     {
         "messages": [
             HumanMessage(content="What is the capital of Germany?")
