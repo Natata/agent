@@ -1,28 +1,51 @@
 from langchain_ollama import ChatOllama
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import HumanMessage, SystemMessage
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import START, MessagesState, StateGraph
 
 llm = ChatOllama(
     model="llama3",
     temperature=0,
 )
 
-prompt = ChatPromptTemplate.from_messages(
-    [
-        SystemMessage(
-            content="You are a helpful assistant that translates English to German."
-        ),
-        MessagesPlaceholder(variable_name="messages"),
-    ]
-)
+# Define the function that calls the model
+def call_model(state: MessagesState):
+    system_prompt = (
+        "You are a helpful assistant. "
+        "Answer all questions to the best of your ability."
+    )
+    messages = [SystemMessage(content=system_prompt)] + state["messages"]
+    response = llm.invoke(messages)
 
-chains = prompt | llm
-resp = chains.invoke(
+    # debug
+    print(response.content)
+
+    return {"messages": response}
+
+# -- Define the workflow
+
+workflow = StateGraph(state_schema=MessagesState)
+workflow.add_node("model", call_model)
+workflow.add_edge(START, "model")
+
+# Add simple in-memory checkpointer
+memory = MemorySaver()
+app = workflow.compile(checkpointer=memory)
+
+resp = app.invoke(
     {
         "messages": [
-            HumanMessage(content="I love programming."),
-        ],
-    }
+            HumanMessage(content="What is the capital of Germany?")
+        ]
+    },
+    config={"configurable": {"thread_id": "1"}},
 )
 
-print(resp.content)
+app.invoke(
+    {
+        "messages": [
+            HumanMessage(content="What did I just ask you?")
+        ]
+    },
+    config={"configurable": {"thread_id": "1"}},
+)
