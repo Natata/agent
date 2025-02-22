@@ -47,4 +47,8 @@ if __name__ == "__main__":
     # loop to get user input and call the model
     while True:
         message = input(">>>: ")
-        print(app.invoke("1", message))
+        if message.lower() == "exit":
+            print("Chatbot: Goodbye!")
+            break
+        response = app.invoke(thread_id="1", message=message)
+        print(f"Chatbot: {response}")
