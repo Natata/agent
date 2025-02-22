@@ -43,5 +43,8 @@ class AgentApp:
     
 if __name__ == "__main__":
     app = AgentApp(model="llama3")
-    print(app.invoke("1", "What is the capital of Germany?"))
-    print(app.invoke("1", "What did I just ask you?"))
+
+    # loop to get user input and call the model
+    while True:
+        message = input(">>>: ")
+        print(app.invoke("1", message))
