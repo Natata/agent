@@ -78,6 +78,8 @@ class Agent:
                 print("### debug:", value)
                 response = value[-1].content
         return response
+    def state(self, config: dict = {}):
+        return self.graph.get_state(config)
 
 if __name__ == "__main__":
     agent = Agent(model=MODEL_LLAMA31)
@@ -86,9 +88,13 @@ if __name__ == "__main__":
     config = {"configurable": {"thread_id": "1"}}
     while True:
         user_input = input(">>>: ")
-        if user_input.lower() == "exit":
-            print("Chatbot: Goodbye!")
-            break
-        response = agent.invoke(user_input=user_input, config=config)
-        print(f"Chatbot: {response}")
-        print('-----------------')
+        match user_input.lower():
+            case "exit":
+                print("Chatbot: Goodbye!")
+                break
+            case "state":
+                print(agent.state(config))
+            case _:
+                response = agent.invoke(user_input=user_input, config=config)
+                print(f"Chatbot: {response}")
+                print('-----------------')
