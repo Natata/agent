@@ -19,19 +19,14 @@ class AgentApp:
         self.llm = ChatOllama(
             model=model,
             temperature=0,
-        )
-
-        tool = ChatOllama(
-            model=model,
-            temperature=0,
         ).bind_tools([multiply])
 
         self.workflow = StateGraph(state_schema=MessagesState)
         self.workflow.add_node("model", self.call_model)
-        self.workflow.add_node("multiply", tool)
+        # self.workflow.add_node("multiply", tool)
 
         self.workflow.add_edge(START, "model")
-        self.workflow.add_conditional_edges
+        # self.workflow.add_conditional_edges
         self.memory = MemorySaver()
         self.app = self.workflow.compile(checkpointer=self.memory)
 
