@@ -3,15 +3,35 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import START, MessagesState, StateGraph
 
+from langchain_core.tools import tool
+
+@tool
+def multiply(a: int, b: int) -> int:
+    """Multiply a and b."""
+    print(f"Multiplying {a} and {b}")
+    return a * b
+
+# constants llama3.1
+MODEL_LLAMA31 = "llama3.1"
+
 class AgentApp:
-    def __init__(self, model="llama3"):
+    def __init__(self, model=MODEL_LLAMA31):
         self.llm = ChatOllama(
             model=model,
             temperature=0,
         )
+
+        tool = ChatOllama(
+            model=model,
+            temperature=0,
+        ).bind_tools([multiply])
+
         self.workflow = StateGraph(state_schema=MessagesState)
         self.workflow.add_node("model", self.call_model)
+        self.workflow.add_node("multiply", tool)
+
         self.workflow.add_edge(START, "model")
+        self.workflow.add_conditional_edges
         self.memory = MemorySaver()
         self.app = self.workflow.compile(checkpointer=self.memory)
 
@@ -25,7 +45,7 @@ class AgentApp:
         response = self.llm.invoke(messages)
 
         # debug
-        # print(response.content)
+        # print("#####", response.content)
 
         return {"messages": response}
 
@@ -39,16 +59,6 @@ class AgentApp:
             config={"configurable": {"thread_id": thread_id}},
         )
 
+        print("#####", output)
+        print(output["messages"][-1].tool_calls)
         return output["messages"][-1].content
-    
-if __name__ == "__main__":
-    app = AgentApp(model="llama3")
-
-    # loop to get user input and call the model
-    while True:
-        message = input(">>>: ")
-        if message.lower() == "exit":
-            print("Chatbot: Goodbye!")
-            break
-        response = app.invoke(thread_id="1", message=message)
-        print(f"Chatbot: {response}")

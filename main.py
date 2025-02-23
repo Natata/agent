@@ -1,51 +1,16 @@
-from langchain_ollama import ChatOllama
-from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import START, MessagesState, StateGraph
+from app import AgentApp, MODEL_LLAMA31
 
-llm = ChatOllama(
-    model="llama3",
-    temperature=0,
-)
+def main():
+    app = AgentApp(model=MODEL_LLAMA31)
 
-# Define the function that calls the model
-def call_model(state: MessagesState):
-    system_prompt = (
-        "You are a helpful assistant. "
-        "Answer all questions to the best of your ability."
-    )
-    messages = [SystemMessage(content=system_prompt)] + state["messages"]
-    response = llm.invoke(messages)
+    # loop to get user input and call the model
+    while True:
+        message = input(">>>: ")
+        if message.lower() == "exit":
+            print("Chatbot: Goodbye!")
+            break
+        response = app.invoke(thread_id="1", message=message)
+        print(f"Chatbot: {response}")
 
-    # debug
-    print(response.content)
-
-    return {"messages": response}
-
-# -- Define the workflow
-
-workflow = StateGraph(state_schema=MessagesState)
-workflow.add_node("model", call_model)
-workflow.add_edge(START, "model")
-
-# Add simple in-memory checkpointer
-memory = MemorySaver()
-app = workflow.compile(checkpointer=memory)
-
-app.invoke(
-    {
-        "messages": [
-            HumanMessage(content="What is the capital of Germany?")
-        ]
-    },
-    config={"configurable": {"thread_id": "1"}},
-)
-
-app.invoke(
-    {
-        "messages": [
-            HumanMessage(content="What did I just ask you?")
-        ]
-    },
-    config={"configurable": {"thread_id": "1"}},
-)
+if __name__ == "__main__":
+    main()

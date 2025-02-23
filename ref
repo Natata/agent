@@ -5,3 +5,5 @@ https://python.langchain.com/docs/tutorials/agents/
 add memory to agent
 https://python.langchain.com/docs/how_to/chatbots_memory/
 
+ollama tool supported model list
+https://ollama.com/search?c=tools
