@@ -2,16 +2,18 @@ from typing import Annotated
 
 from typing_extensions import TypedDict
 
+from IPython.display import Image, display
+
 from langchain_ollama import ChatOllama
+
+from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
-
-from langchain_core.tools import tool
-
 from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.checkpoint.memory import MemorySaver
 
-from IPython.display import Image, display
 
 MODEL_LLAMA31 = "llama3.1"
 
@@ -19,7 +21,6 @@ MODEL_LLAMA31 = "llama3.1"
 @tool
 def multiply(a: int, b: int) -> int:
     """Multiply a and b."""
-    # print(f"Multiplying {a} and {b}")
     return a * b
 
 class State(TypedDict):
@@ -41,9 +42,6 @@ class Agent:
         tool_node = ToolNode(tools=[multiply])
         graph_builder.add_node("tools", tool_node)
         # edges
-        #graph_builder.add_edge(START, "assistant")
-        #graph_builder.add_edge("assistant", END)
-        
         graph_builder.add_conditional_edges(
             "assistant",
             tools_condition,
@@ -51,9 +49,13 @@ class Agent:
         graph_builder.add_edge("tools", "assistant")
         graph_builder.set_entry_point("assistant")
         graph_builder.set_finish_point("assistant")
-        self.graph = graph_builder.compile()
 
-        # comment out to show the graph
+        # memory
+        memory = MemorySaver()        
+
+        self.graph = graph_builder.compile(checkpointer=memory)
+
+        ## comment out to show the graph
         # try:
         #     display(Image(self.graph.get_graph().draw_mermaid_png()))
         # except Exception:
@@ -65,29 +67,28 @@ class Agent:
         response = self.llm.invoke(messages)
         return {"messages": response}
 
-    def invoke(self, user_input: str):
+    def invoke(self, user_input: str, config: dict = {}) -> str:
         response = ""
-        for event in self.graph.stream({"messages": [{"role": "user", "content": user_input}]}):
+        for event in self.graph.stream(
+            {"messages": [{"role": "user", "content": user_input}]},
+            config,
+            stream_mode="values",
+        ):
             for value in event.values():
-                # print("### debug:", value)
-                if isinstance(value["messages"], list):
-                    response = value["messages"][-1].content
-                else:
-                    response = value["messages"].content
-                # if "messages" in value:
-                #     response += value["messages"].content
-                #     #print("# debug:", value["messages"].content)
+                print("### debug:", value)
+                response = value[-1].content
         return response
 
 if __name__ == "__main__":
     agent = Agent(model=MODEL_LLAMA31)
     
     # loop to get user input and call the model
+    config = {"configurable": {"thread_id": "1"}}
     while True:
         user_input = input(">>>: ")
         if user_input.lower() == "exit":
             print("Chatbot: Goodbye!")
             break
-        response = agent.invoke(user_input=user_input)
+        response = agent.invoke(user_input=user_input, config=config)
         print(f"Chatbot: {response}")
         print('-----------------')
