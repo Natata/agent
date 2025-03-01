@@ -55,7 +55,7 @@ class Agent:
 
         self.graph = graph_builder.compile(checkpointer=memory)
 
-        ## comment out to show the graph
+        ## NOTE: comment out to show the graph
         # try:
         #     display(Image(self.graph.get_graph().draw_mermaid_png()))
         # except Exception:
@@ -67,7 +67,7 @@ class Agent:
             content="You are a helpful assistant. Use the 'multiply' tool only when the user explicitly asks for multiplication (e.g., 'multiply 3 and 4' or 'what is 3 times 4'). For all other questions, answer directly using your knowledge."
         )
         messages = state["messages"]
-        response = self.llm.invoke(messages)
+        response = self.llm.invoke([system_message] + messages)
         return {"messages": response}
 
     def invoke(self, user_input: str, config: dict = {}) -> str:
@@ -77,10 +77,11 @@ class Agent:
             config,
             stream_mode="values",
         ):
+            print("### debug event:", event)
             for value in event.values():
-                print("### debug:", value)
                 response = value[-1].content
         return response
+
     def state(self, config: dict = {}):
         return self.graph.get_state(config)
 
