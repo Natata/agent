@@ -1,13 +1,24 @@
-from typing import Annotated
+from typing import (
+    Any,
+    Literal, 
+    Annotated,
+    Union,
+)
 
 from typing_extensions import TypedDict
+
+from pydantic import BaseModel
 
 from IPython.display import Image, display
 
 from langchain_ollama import ChatOllama
 
 from langchain_core.tools import tool
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import (
+    HumanMessage, 
+    SystemMessage,
+    AnyMessage,
+)
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
@@ -16,6 +27,7 @@ from langgraph.checkpoint.memory import MemorySaver
 
 
 MODEL_LLAMA31 = "llama3.1"
+NOTE_TOOL_CULCULATOR = "node_tool_calculator"
 
 # -- tools
 @tool
@@ -28,7 +40,23 @@ class State(TypedDict):
     # in the annotation defines how this state key should be updated
     # (in this case, it appends messages to the list, rather than overwriting them)
     messages: Annotated[list, add_messages]
-    
+
+def tools_condition(
+    state: Union[list[AnyMessage], dict[str, Any], BaseModel],
+    messages_key: str = "messages",
+) -> Literal["node_tool_calculator", "__end__"]:
+    if isinstance(state, list):
+        ai_message = state[-1]
+    elif isinstance(state, dict) and (messages := state.get(messages_key, [])):
+        ai_message = messages[-1]
+    elif messages := getattr(state, messages_key, []):
+        ai_message = messages[-1]
+    else:
+        raise ValueError(f"No messages found in input state to tool_edge: {state}")
+    if hasattr(ai_message, "tool_calls") and len(ai_message.tool_calls) > 0:
+        return NOTE_TOOL_CULCULATOR
+    return "__end__"
+
 class Agent:
     def __init__(self, model=MODEL_LLAMA31):
         self.llm = ChatOllama(
@@ -40,13 +68,13 @@ class Agent:
         # nodes
         graph_builder.add_node("assistant", self.assistant)
         tool_node = ToolNode(tools=[multiply])
-        graph_builder.add_node("tools", tool_node)
+        graph_builder.add_node(NOTE_TOOL_CULCULATOR, tool_node)
         # edges
         graph_builder.add_conditional_edges(
             "assistant",
             tools_condition,
         )
-        graph_builder.add_edge("tools", "assistant")
+        graph_builder.add_edge(NOTE_TOOL_CULCULATOR, "assistant")
         graph_builder.set_entry_point("assistant")
         graph_builder.set_finish_point("assistant")
 
