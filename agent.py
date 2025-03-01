@@ -218,6 +218,8 @@ class Agent:
         # except Exception:
         #     # This requires some extra dependencies and is optional
         #     pass
+    def langgraph(self):
+        return self.graph
 
     def assistant(self, state: State):
         system_message = SystemMessage(
@@ -248,23 +250,3 @@ class Agent:
 
     def state(self, config: dict = {}):
         return self.graph.get_state(config)
-
-if __name__ == "__main__":
-    agent = Agent(model=MODEL_LLAMA31)
-    
-    # loop to get user input and call the model
-    config = {"configurable": {"thread_id": "1"}}
-    while True:
-        user_input = input(">>>: ")
-        match user_input.lower():
-            case "exit":
-                print("Chatbot: Goodbye!")
-                break
-            case "state":
-                print(agent.state(config))
-            case "":
-                print("Chatbot: Please type something.")
-            case _:
-                response = agent.invoke(user_input=user_input, config=config)
-                print(f"Chatbot: {response}")
-                print('-----------------')
