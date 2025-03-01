@@ -63,6 +63,9 @@ class Agent:
         #     pass
 
     def assistant(self, state: State):
+        system_message = SystemMessage(
+            content="You are a helpful assistant. Use the 'multiply' tool only when the user explicitly asks for multiplication (e.g., 'multiply 3 and 4' or 'what is 3 times 4'). For all other questions, answer directly using your knowledge."
+        )
         messages = state["messages"]
         response = self.llm.invoke(messages)
         return {"messages": response}
